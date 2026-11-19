@@ -9,11 +9,35 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
   line-height: 1.5;
+}
+
+a {
+  color: var(--violet);
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+  margin: 0 0 var(--sp-3);
+}
+
+:focus-visible {
+  outline: 3px solid var(--sun);
+  outline-offset: 2px;
 }
 
 .page {
   max-width: 1080px;
   margin: 0 auto;
-  padding: var(--sp-6) var(--sp-4);
+  padding: var(--sp-6) var(--sp-4) var(--sp-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }

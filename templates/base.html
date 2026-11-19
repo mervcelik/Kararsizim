@@ -7,12 +7,16 @@
   <meta name="description" content="{% block meta_description %}Sen sor, kalabalık karar versin.{% endblock %}">
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <main class="page">
+  {% include "partials/header.html" %}
+  <main class="page" id="main">
     {% block content %}{% endblock %}
   </main>
+  {% include "partials/toast.html" %}
+  <script src="{% static 'js/toast.js' %}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

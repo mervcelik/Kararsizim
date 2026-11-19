@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Giriş yap · Kararsızım{% endblock %}
+
+{% block content %}
+  <section class="auth-card card">
+    <h1 class="auth-card__title">Giriş yap</h1>
+
+    {% if needs_login_to_create %}
+      <p class="notice notice--info">Anket oluşturmak için giriş yapman gerekiyor.</p>
+    {% endif %}
+
+    <form method="post" novalidate class="form">
+      {% csrf_token %}
+      {% for error in form.non_field_errors %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endfor %}
+      {% for field in form %}
+        {% include "partials/form_field.html" %}
+      {% endfor %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn--primary btn--block">Giriş yap</button>
+    </form>
+
+    <p class="auth-card__switch">Hesabın yok mu? <a href="{% url 'accounts:register' %}">Kayıt ol</a></p>
+  </section>
+{% endblock %}

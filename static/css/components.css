@@ -1,0 +1,225 @@
+/* ---------- header ---------- */
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header__inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.site-header__logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.site-header__user {
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: var(--sp-1);
+}
+
+.site-header__logout {
+  margin: 0;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.btn--primary {
+  background: var(--violet);
+  color: var(--surface);
+}
+
+.btn--primary:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.btn--ghost:hover {
+  background: var(--line);
+}
+
+.btn--sm {
+  padding: var(--sp-1) var(--sp-4);
+  font-size: 14px;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ---------- card ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-5);
+}
+
+/* ---------- auth ---------- */
+.auth-card {
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.auth-card__title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.auth-card__lead {
+  color: var(--muted);
+  margin: 0 0 var(--sp-5);
+}
+
+.auth-card__switch {
+  margin: var(--sp-5) 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ---------- forms ---------- */
+.form {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+.field__label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.field input {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.field input:focus-visible {
+  border-color: var(--violet);
+}
+
+.field--invalid input {
+  border-color: var(--danger);
+}
+
+.field__help {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field__help ul {
+  margin: 0;
+  padding-left: var(--sp-4);
+}
+
+/* --danger on white is below 4.5:1 for small text, so it marks the error instead of colouring it. */
+.field__error {
+  margin: 0;
+  padding-left: var(--sp-2);
+  border-left: 3px solid var(--danger);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- notices ---------- */
+.notice {
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-input);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notice--info {
+  background: var(--paper);
+  border: 1.5px solid var(--violet);
+  color: var(--ink);
+}
+
+.notice--error {
+  background: var(--paper);
+  border: 1.5px solid var(--danger);
+  color: var(--ink);
+}
+
+/* ---------- toast ---------- */
+.toast-region {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  left: var(--sp-4);
+  display: grid;
+  justify-items: end;
+  gap: var(--sp-2);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.toast {
+  max-width: 360px;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--radius-input);
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  transition: opacity 200ms ease;
+}
+
+.toast--hiding {
+  opacity: 0;
+}

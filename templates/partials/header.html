@@ -1,0 +1,18 @@
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__logo" href="{% url 'polls:index' %}">Kararsızım</a>
+    <nav class="site-header__nav" aria-label="Hesap">
+      {% if user.is_authenticated %}
+        <span class="site-header__user">@{{ user.username }}</span>
+        <a class="btn btn--primary btn--sm" href="/anket/olustur/">Anket oluştur</a>
+        <form method="post" action="{% url 'accounts:logout' %}" class="site-header__logout">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--ghost btn--sm">Çıkış yap</button>
+        </form>
+      {% else %}
+        <a class="btn btn--ghost btn--sm" href="{% url 'accounts:login' %}">Giriş yap</a>
+        <a class="btn btn--primary btn--sm" href="{% url 'accounts:register' %}">Kayıt ol</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>

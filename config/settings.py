@@ -75,6 +75,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 AUTH_USER_MODEL = "accounts.User"
 
+LOGIN_URL = "/giris/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
 # Empty DATABASE_URL falls back to local SQLite (Phase 0). Supabase pooler settings
 # below are harmless on SQLite and required on the transaction pooler (port 6543).
 RUNNING_TESTS = sys.argv[1:2] == ["test"]
