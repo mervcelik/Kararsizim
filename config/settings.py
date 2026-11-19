@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -76,7 +77,15 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Empty DATABASE_URL falls back to local SQLite (Phase 0). Supabase pooler settings
 # below are harmless on SQLite and required on the transaction pooler (port 6543).
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+RUNNING_TESTS = sys.argv[1:2] == ["test"]
+SQLITE_URL = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+
+# Tests never touch Supabase: the transaction pooler cannot create/drop the test database.
+# Set TEST_DATABASE_URL (session pooler) to run them against Postgres explicitly.
+if RUNNING_TESTS:
+    DATABASE_URL = os.getenv("TEST_DATABASE_URL", "").strip() or SQLITE_URL
+else:
+    DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or SQLITE_URL
 DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=0)}
 if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
