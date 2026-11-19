@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ poll.question }} · Kararsızım{% endblock %}
+{% block meta_description %}{{ poll.question }} — Kararsızım'da oy ver.{% endblock %}
+
+{% block content %}
+  <article class="poll-detail card">
+    <p class="poll-card__meta">
+      <a class="poll-card__author" href="{% url 'polls:profile' poll.author.username %}">@{{ poll.author.username }}</a>
+      <span aria-hidden="true">·</span>
+      <time datetime="{{ poll.created_at|date:'c' }}">{{ card.relative_time }}</time>
+      {% if not poll.is_open %}<span aria-hidden="true">·</span> <span class="poll-card__status">Kapandı</span>{% endif %}
+    </p>
+    <h1 class="poll-detail__question">{{ poll.question }}</h1>
+    {% if poll.description %}<p class="poll-detail__description">{{ poll.description }}</p>{% endif %}
+
+    {% include "partials/decision_bar.html" %}
+
+    <ul class="option-list" aria-live="polite">
+      {% for option in card.options %}
+        {% include "partials/option_row.html" %}
+      {% endfor %}
+    </ul>
+  </article>
+{% endblock %}

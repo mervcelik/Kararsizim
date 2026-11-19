@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Anket oluştur · Kararsızım{% endblock %}
+
+{% block content %}
+  <section class="create-card card">
+    <h1 class="auth-card__title">Anket oluştur</h1>
+    <p class="auth-card__lead">Sorunu yaz, 2 ila 5 seçenek ekle.</p>
+
+    <form method="post" novalidate class="form" data-poll-form data-min="{{ min_options }}" data-max="{{ max_options }}">
+      {% csrf_token %}
+      {% for error in form.non_field_errors %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endfor %}
+
+      {% include "partials/form_field.html" with field=form.question %}
+      {% include "partials/form_field.html" with field=form.description %}
+
+      <fieldset class="option-fieldset{% if form.option_errors %} field--invalid{% endif %}"{% if form.option_errors %} aria-describedby="options_error"{% endif %}>
+        <legend class="field__label">Seçenekler</legend>
+        <ol class="option-inputs" data-option-list>
+          {% for value in form.option_values %}
+            <li class="option-input option-input--{{ forloop.counter0 }}" data-option-row>
+              <label class="visually-hidden" for="option_{{ forloop.counter }}">Seçenek {{ forloop.counter }}</label>
+              <input type="text" name="options" id="option_{{ forloop.counter }}" value="{{ value }}" maxlength="80"
+                     placeholder="Seçenek {{ forloop.counter }}{% if forloop.counter > min_options %} (isteğe bağlı){% endif %}">
+              <button type="button" class="option-input__remove" data-option-remove hidden aria-label="{{ forloop.counter }}. seçeneği kaldır">Kaldır</button>
+            </li>
+          {% endfor %}
+        </ol>
+        <button type="button" class="btn btn--ghost btn--sm" data-option-add hidden>Seçenek ekle</button>
+        {% for error in form.option_errors %}<p class="field__error"{% if forloop.first %} id="options_error"{% endif %}>{{ error }}</p>{% endfor %}
+      </fieldset>
+
+      <button type="submit" class="btn btn--primary btn--block">Anket oluştur</button>
+    </form>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/poll-form.js' %}" defer></script>
+{% endblock %}

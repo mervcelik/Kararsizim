@@ -1,0 +1,12 @@
+<article class="poll-card card" data-poll-card>
+  {% include "partials/decision_bar.html" %}
+  <h2 class="poll-card__question">
+    <a class="poll-card__link" href="{{ card.poll.get_absolute_url }}">{{ card.poll.question }}</a>
+  </h2>
+  <p class="poll-card__meta">
+    <a class="poll-card__author" href="{% url 'polls:profile' card.poll.author.username %}">@{{ card.poll.author.username }}</a>
+    <span aria-hidden="true">·</span>
+    <time datetime="{{ card.poll.created_at|date:'c' }}">{{ card.relative_time }}</time>
+    {% if not card.poll.is_open %}<span aria-hidden="true">·</span> <span class="poll-card__status">Kapandı</span>{% endif %}
+  </p>
+</article>

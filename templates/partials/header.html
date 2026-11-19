@@ -3,8 +3,8 @@
     <a class="site-header__logo" href="{% url 'polls:index' %}">Kararsızım</a>
     <nav class="site-header__nav" aria-label="Hesap">
       {% if user.is_authenticated %}
-        <span class="site-header__user">@{{ user.username }}</span>
-        <a class="btn btn--primary btn--sm" href="/anket/olustur/">Anket oluştur</a>
+        <a class="site-header__user" href="{% url 'polls:profile' user.username %}">@{{ user.username }}</a>
+        <a class="btn btn--primary btn--sm" href="{% url 'polls:create' %}">Anket oluştur</a>
         <form method="post" action="{% url 'accounts:logout' %}" class="site-header__logout">
           {% csrf_token %}
           <button type="submit" class="btn btn--ghost btn--sm">Çıkış yap</button>

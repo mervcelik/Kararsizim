@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}@{{ profile_username }} · Kararsızım{% endblock %}
+
+{% block content %}
+  <section class="profile-head">
+    <h1 class="hero__title">@{{ profile_username }}</h1>
+    <dl class="profile-stats">
+      <div><dt>Anket</dt><dd>{{ poll_count }}</dd></div>
+      <div><dt>Aldığı oy</dt><dd>{{ vote_count }}</dd></div>
+    </dl>
+  </section>
+
+  {% include "partials/poll_feed.html" with empty_text="Henüz anket açmamış." %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/feed.js' %}" defer></script>
+{% endblock %}

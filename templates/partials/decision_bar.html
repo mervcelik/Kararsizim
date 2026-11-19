@@ -1,0 +1,13 @@
+<div class="decision">
+  {% if card.show_results and card.poll.total_votes %}
+    <div class="decision-bar" role="img" aria-label="{% for option in card.options %}{{ option.text }} %{{ option.percent }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+      {% for option in card.options %}{% if option.percent %}<span class="decision-bar__seg decision-bar__seg--{{ option.position }}" style="width: {{ option.percent }}%"></span>{% endif %}{% endfor %}
+    </div>
+  {% else %}
+    <div class="decision-bar decision-bar--neutral" aria-hidden="true"></div>
+  {% endif %}
+  <div class="decision__meta">
+    <span class="badge badge--{{ card.badge_kind }}">{{ card.badge_text }}</span>
+    <span class="decision__total">{{ card.poll.total_votes }} kişi oy verdi</span>
+  </div>
+</div>
