@@ -39,8 +39,8 @@
   --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
 
   /* tipografi */
-  --font-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
-  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Nunito", system-ui, sans-serif;
+  --font-body:    "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
 
   /* tip ölçeği */

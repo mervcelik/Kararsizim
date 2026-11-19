@@ -661,3 +661,4 @@ Bu bölüm, yukarıdaki metinle çelişen veya belirsiz kalan noktalarda **geçe
 7. **Data API kilidi (Bölüm 11.1'deki "RLS kullanılmaz" kuralının istisnası):** Supabase `public` şemasını Data API (PostgREST) üzerinden `anon`/`authenticated` rollerine açar. Bu yüzden tüm tablolarda **politikasız** RLS açılır ve bu rollerin yetkileri kaldırılır. RLS uygulama yetkilendirmesi için kullanılmaz; Django tablo sahibi `postgres` rolüyle bağlandığı için etkilenmez. Her `migrate`'ten sonra çalıştırılır:
    `DATABASE_URL=$DATABASE_URL_DIRECT python manage.py lock_public_tables`
    Ek olarak Supabase dashboard'unda Data API kapatılır (Project Settings → Data API).
+8. **Gövde fontu (Bölüm 7 Tipografi'nin yerine):** Gövde metni, butonlar ve formlar `Inter` yerine **`Nunito`** (400/500/600/700/800) ile yazılır; Inter okunması zor bulundu. Başlıklar `Bricolage Grotesque`, sayılar `JetBrains Mono` olarak kalır.
