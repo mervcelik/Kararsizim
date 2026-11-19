@@ -72,6 +72,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+AUTH_USER_MODEL = "accounts.User"
+
 # Empty DATABASE_URL falls back to local SQLite (Phase 0). Supabase pooler settings
 # below are harmless on SQLite and required on the transaction pooler (port 6543).
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"

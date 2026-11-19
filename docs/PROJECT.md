@@ -657,3 +657,7 @@ Bu bölüm, yukarıdaki metinle çelişen veya belirsiz kalan noktalarda **geçe
 3. **Python sürümü:** Yerelde Python 3.15 ile çalışılır. Django/bağımlılık uyumsuzluğu çıkarsa durulur ve sorulur.
 4. **`voter_key` kalıcılığı:** `voter_key` ilk üretildiğinde `request.session["voter_key"]` içine yazılır ve sonraki isteklerde oradan okunur. Böylece girişte oturum anahtarı yenilense de (Django `cycle_key`) anonim verilen oy kullanıcıyla eşleşmeye devam eder.
 5. **Repo:** Ana branch `main`. `.idea/` git'e girmez. Her faz sonunda commit atılır.
+6. **Supabase projesi:** `kararsizim`, bölge `eu-central-1` (Frankfurt). Pooler adresi `aws-0-eu-central-1.pooler.supabase.com`. Vercel fonksiyon bölgesi de Frankfurt (`fra1`) seçilecek.
+7. **Data API kilidi (Bölüm 11.1'deki "RLS kullanılmaz" kuralının istisnası):** Supabase `public` şemasını Data API (PostgREST) üzerinden `anon`/`authenticated` rollerine açar. Bu yüzden tüm tablolarda **politikasız** RLS açılır ve bu rollerin yetkileri kaldırılır. RLS uygulama yetkilendirmesi için kullanılmaz; Django tablo sahibi `postgres` rolüyle bağlandığı için etkilenmez. Her `migrate`'ten sonra çalıştırılır:
+   `DATABASE_URL=$DATABASE_URL_DIRECT python manage.py lock_public_tables`
+   Ek olarak Supabase dashboard'unda Data API kapatılır (Project Settings → Data API).
