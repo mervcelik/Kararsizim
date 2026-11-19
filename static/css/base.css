@@ -4,13 +4,21 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--paper);
   color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 16px;
+  font-family: var(--font-body);
+  font-size: var(--fs-16);
   line-height: 1.5;
+  overflow-wrap: break-word;
 }
 
 a {
@@ -18,19 +26,52 @@ a {
 }
 
 h1, h2, h3 {
+  font-family: var(--font-display);
   line-height: 1.2;
   margin: 0 0 var(--sp-3);
 }
 
+img,
+svg {
+  max-width: 100%;
+}
+
+/* The --sun ring is required by the spec; the ink halo keeps it visible on light surfaces. */
 :focus-visible {
   outline: 3px solid var(--sun);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--sp-4);
+  top: var(--sp-2);
+  z-index: 20;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
 }
 
 .page {
+  flex: 1;
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto;
   padding: var(--sp-6) var(--sp-4) var(--sp-8);
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding-top: var(--sp-5);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -39,5 +80,6 @@ h1, h2, h3 {
   *::after {
     transition: none !important;
     animation: none !important;
+    scroll-behavior: auto !important;
   }
 }

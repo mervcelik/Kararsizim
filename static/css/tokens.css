@@ -22,6 +22,8 @@
 
   /* durum */
   --danger:     #E5484D;
+  /* buton zemini: --danger üzerinde beyaz metin 3.9:1 kalıyor, bu ton 5.8:1 */
+  --danger-strong: color-mix(in srgb, var(--danger) 75%, var(--ink));
 
   /* gölge: griye değil, mora çalar */
   --shadow-sm: 0 2px 8px rgba(91, 61, 245, 0.08);
@@ -35,4 +37,13 @@
   /* aralık ölçeği */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
   --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+
+  /* tipografi */
+  --font-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* tip ölçeği */
+  --fs-12: 12px; --fs-14: 14px; --fs-16: 16px; --fs-20: 20px;
+  --fs-26: 26px; --fs-34: 34px; --fs-44: 44px;
 }

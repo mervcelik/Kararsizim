@@ -431,3 +431,56 @@ class OwnerActionTests(TestCase):
     def test_close_requires_post(self):
         self.client.force_login(self.author)
         self.assertEqual(self.client.get(reverse("polls:close", args=[self.poll.public_id])).status_code, 405)
+
+
+class UiShellTests(TestCase):
+    """Faz 5: error pages, share metadata and the no-raw-hex rule."""
+
+    def test_unknown_url_uses_branded_404(self):
+        response = self.client.get("/boyle-bir-sayfa-yok/")
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, "404.html")
+        self.assertContains(response, "Burada bir şey yok.", status_code=404)
+
+    def test_missing_poll_uses_branded_404(self):
+        response = self.client.get("/anket/YOKYOKYOK1/")
+        self.assertTemplateUsed(response, "404.html")
+
+    def test_500_page_renders_without_request_context(self):
+        from django.template.loader import render_to_string
+
+        html = render_to_string("500.html")
+        self.assertIn("Bir şeyler ters gitti.", html)
+        self.assertNotIn('property="og:url"', html)
+
+    def test_detail_shares_question_in_og_tags(self):
+        author = User.objects.create_user("paylasan", "p@example.com", PASSWORD)
+        poll = make_poll(author, question="Kırmızı mı mavi mi?")
+        response = self.client.get(poll.get_absolute_url())
+        self.assertContains(response, '<meta property="og:title" content="Kırmızı mı mavi mi?">', html=False)
+        self.assertContains(response, 'property="og:image" content="http://testserver/static/img/og.png"')
+        self.assertContains(response, 'rel="icon"')
+        self.assertNotContains(response, "p@example.com")
+
+    def test_favicon_ico_redirects_to_svg(self):
+        response = self.client.get("/favicon.ico")
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response["Location"].endswith("img/favicon.svg"))
+
+    def test_no_raw_hex_outside_tokens(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        hex_color = re.compile(r"(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+        offenders = []
+        css_dir = Path(settings.BASE_DIR) / "static" / "css"
+        for path in css_dir.glob("*.css"):
+            if path.name != "tokens.css" and hex_color.search(path.read_text(encoding="utf-8")):
+                offenders.append(path.name)
+        for path in (Path(settings.BASE_DIR) / "templates").rglob("*.html"):
+            text = re.sub(r'href="#[^"]*"', "", path.read_text(encoding="utf-8"))
+            if hex_color.search(text):
+                offenders.append(str(path))
+        self.assertEqual(offenders, [])

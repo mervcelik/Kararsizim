@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Sayfa bulunamadı · Kararsızım{% endblock %}
+
+{% block content %}
+  <section class="error-page card">
+    <div class="decision-bar decision-bar--neutral error-page__bar" aria-hidden="true"></div>
+    <p class="error-page__code">404</p>
+    <h1 class="error-page__title">Burada bir şey yok.</h1>
+    <p class="error-page__lead">Bağlantı yanlış olabilir ya da anket silinmiş olabilir.</p>
+    <a class="btn btn--primary" href="/">Anketlere dön</a>
+  </section>
+{% endblock %}

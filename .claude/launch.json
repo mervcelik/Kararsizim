@@ -6,6 +6,12 @@
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["manage.py", "runserver", "8000"],
       "port": 8000
+    },
+    {
+      "name": "django-prodlike-sqlite",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": ["-NoProfile", "-Command", "$env:DJANGO_DEBUG='False'; $env:DJANGO_SECURE_SSL_REDIRECT='False'; $env:DATABASE_URL='sqlite:///C:/Projects/Kararsizim/db.sqlite3'; .venv/Scripts/python.exe manage.py runserver 8001 --insecure"],
+      "port": 8001
     }
   ]
 }

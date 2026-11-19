@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Bir hata oldu · Kararsızım{% endblock %}
+
+{% block content %}
+  <section class="error-page card">
+    <div class="decision-bar decision-bar--neutral error-page__bar" aria-hidden="true"></div>
+    <p class="error-page__code">500</p>
+    <h1 class="error-page__title">Bir şeyler ters gitti.</h1>
+    <p class="error-page__lead">Sorun bizde. Birkaç dakika sonra tekrar dene.</p>
+    <a class="btn btn--primary" href="/">Anketlere dön</a>
+  </section>
+{% endblock %}

@@ -45,9 +45,16 @@
 
   function renderOptions(results) {
     var fills = [];
+    var votedRow = null;
+    // The clicked button is about to be replaced; remember whether focus was in the list.
+    var hadFocus = list.contains(document.activeElement);
     var rows = results.options.map(function (option) {
       var voted = option.id === results.voted_option_id;
       var row = el("li", "option-row option-row--" + option.position + " option-row--result" + (voted ? " option-row--voted" : ""));
+      if (voted) {
+        row.setAttribute("tabindex", "-1");
+        votedRow = row;
+      }
       var inner = el("div", "option-row__inner");
       var fill = el("span", "option-row__fill");
       fill.setAttribute("aria-hidden", "true");
@@ -71,6 +78,10 @@
     // Start at 0% and let the CSS transition fill each bar.
     void list.offsetWidth;
     fills.forEach(function (pair) { pair[0].style.width = pair[1] + "%"; });
+    // Keep keyboard users in place: move focus to their own vote instead of dropping it to <body>.
+    if (votedRow && (hadFocus || document.activeElement === document.body)) {
+      votedRow.focus({ preventScroll: true });
+    }
   }
 
   function setBusy(busy) {
