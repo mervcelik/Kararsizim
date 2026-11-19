@@ -1,5 +1,7 @@
-<li class="option-row option-row--{{ option.position }}{% if card.show_results %} option-row--result{% endif %}{% if option.is_voted %} option-row--voted{% endif %}">
-  {% if card.show_results %}<span class="option-row__fill" style="width: {{ option.percent }}%" aria-hidden="true"></span>{% endif %}
-  <span class="option-row__text">{{ option.text }}{% if option.is_voted %} <span class="option-row__check" aria-label="senin oyun">✓</span>{% endif %}</span>
-  {% if card.show_results %}<span class="option-row__percent">%{{ option.percent }}</span>{% endif %}
+<li class="option-row option-row--{{ option.position }}{% if card.show_results %} option-row--result{% endif %}{% if option.is_voted %} option-row--voted{% endif %}{% if card.can_vote %} option-row--votable{% endif %}" data-option-id="{{ option.id }}">
+  {% if card.can_vote %}<button type="submit" name="option_id" value="{{ option.id }}" class="option-row__inner option-row__button">{% else %}<div class="option-row__inner">{% endif %}
+    {% if card.show_results %}<span class="option-row__fill" style="width: {{ option.percent }}%" aria-hidden="true"></span>{% endif %}
+    <span class="option-row__text">{{ option.text }}{% if option.is_voted %} <span class="option-row__check">✓<span class="visually-hidden"> senin oyun</span></span>{% endif %}</span>
+    {% if card.show_results %}<span class="option-row__percent">%{{ option.percent }}</span>{% endif %}
+  {% if card.can_vote %}</button>{% else %}</div>{% endif %}
 </li>

@@ -1,12 +1,31 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from . import selectors, services
 from .forms import PollForm
 from .models import MAX_OPTIONS, MIN_OPTIONS
+from .utils import get_voter_key, remember_vote
+
+
+def _get_poll_or_404(public_id):
+    poll = selectors.get_poll(public_id)
+    if poll is None:
+        raise Http404("Anket bulunamadı.")
+    return poll
+
+
+def _wants_json(request):
+    return (
+        "application/json" in request.headers.get("Accept", "")
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    )
+
+
+def _poll_view(request, poll):
+    return selectors.build_poll_views([poll], request)[0]
 
 
 def index(request):
@@ -23,11 +42,65 @@ def index(request):
 
 
 def detail(request, public_id):
-    poll = selectors.get_poll(public_id)
-    if poll is None:
-        raise Http404("Anket bulunamadı.")
-    view = selectors.build_poll_views([poll], request)[0]
-    return render(request, "polls/detail.html", {"card": view, "poll": poll})
+    poll = _get_poll_or_404(public_id)
+    return render(request, "polls/detail.html", {"card": _poll_view(request, poll), "poll": poll})
+
+
+@require_POST
+def vote(request, public_id):
+    poll = _get_poll_or_404(public_id)
+    user = request.user if request.user.is_authenticated else None
+    try:
+        services.cast_vote(
+            poll=poll,
+            option_id=request.POST.get("option_id"),
+            user=user,
+            voter_key=get_voter_key(request),
+        )
+    except services.VoteError as error:
+        status, message, ok = error.status, error.message, False
+    else:
+        remember_vote(request, poll.pk)
+        status, message, ok = 200, "Oyun kaydedildi.", True
+
+    if _wants_json(request):
+        fresh = selectors.get_poll(public_id)
+        return JsonResponse(
+            {"ok": ok, "message": message, "results": selectors.results_payload(_poll_view(request, fresh))},
+            status=status,
+        )
+    (messages.success if ok else messages.error)(request, message)
+    return redirect(poll)
+
+
+@require_GET
+def results(request, public_id):
+    poll = _get_poll_or_404(public_id)
+    return JsonResponse(selectors.results_payload(_poll_view(request, poll)))
+
+
+@login_required
+@require_POST
+def close(request, public_id):
+    poll = _get_poll_or_404(public_id)
+    if poll.author_id != request.user.pk:
+        return HttpResponseForbidden("Bu anketi sadece sahibi kapatabilir.")
+    services.close_poll(poll)
+    messages.success(request, "Anket kapatıldı. Sonuçlar artık herkese açık.")
+    return redirect(poll)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete(request, public_id):
+    poll = _get_poll_or_404(public_id)
+    if poll.author_id != request.user.pk:
+        return HttpResponseForbidden("Bu anketi sadece sahibi silebilir.")
+    if request.method == "POST":
+        services.delete_poll(poll)
+        messages.success(request, "Anket silindi.")
+        return redirect("polls:profile", username=request.user.username)
+    return render(request, "polls/delete_confirm.html", {"poll": poll})
 
 
 @login_required

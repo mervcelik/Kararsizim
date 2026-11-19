@@ -1,5 +1,10 @@
+import hashlib
 import secrets
 import string
+
+from django.conf import settings
+
+VOTED_POLLS_SESSION_LIMIT = 200
 
 BASE62_ALPHABET = string.ascii_letters + string.digits
 PUBLIC_ID_LENGTH = 10
@@ -7,6 +12,24 @@ PUBLIC_ID_LENGTH = 10
 
 def generate_public_id():
     return "".join(secrets.choice(BASE62_ALPHABET) for _ in range(PUBLIC_ID_LENGTH))
+
+
+def get_voter_key(request):
+    """Anonymous voter id, stored in the session so it survives the key rotation on login."""
+    voter_key = request.session.get("voter_key")
+    if voter_key:
+        return voter_key
+    if not request.session.session_key:
+        request.session.save()
+    voter_key = hashlib.sha256((request.session.session_key + settings.VOTER_KEY_SALT).encode()).hexdigest()
+    request.session["voter_key"] = voter_key
+    return voter_key
+
+
+def remember_vote(request, poll_id):
+    voted = [pid for pid in request.session.get("voted_polls", []) if pid != poll_id]
+    voted.append(poll_id)
+    request.session["voted_polls"] = voted[-VOTED_POLLS_SESSION_LIMIT:]
 
 
 def compute_percentages(counts):

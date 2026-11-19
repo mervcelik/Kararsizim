@@ -1,4 +1,6 @@
+import json
 from datetime import timedelta
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, connection, transaction
@@ -7,7 +9,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from . import selectors
+from . import selectors, services
 from .models import Option, Poll, Vote
 from .services import create_poll
 from .utils import BASE62_ALPHABET, compute_percentages, decision_badge, generate_public_id
@@ -233,3 +235,199 @@ class ProfileTests(TestCase):
 
     def test_unknown_profile_404(self):
         self.assertEqual(self.client.get("/kullanici/yok_boyle/").status_code, 404)
+
+
+JSON = {"HTTP_ACCEPT": "application/json"}
+
+
+class VotingTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create_user("yazar", "yazar@example.com", PASSWORD)
+        cls.voter = User.objects.create_user("secmen", "secmen.gizli@example.com", PASSWORD)
+        cls.poll = make_poll(cls.author, options=("Sinema", "Restoran", "Evde kal"))
+        cls.option = cls.poll.options.first()
+        cls.other_poll = make_poll(cls.author, question="Başka bir anket sorusu")
+
+    def vote_url(self, poll=None):
+        return reverse("polls:vote", args=[(poll or self.poll).public_id])
+
+    def vote(self, option_id=None, poll=None, **extra):
+        return self.client.post(self.vote_url(poll), {"option_id": option_id or self.option.pk}, **extra)
+
+    def counters(self):
+        self.poll.refresh_from_db()
+        self.option.refresh_from_db()
+        return self.poll.total_votes, self.option.vote_count
+
+    def test_anonymous_vote_succeeds_and_increments_counters(self):
+        response = self.vote(**JSON)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["results"]["voted_option_id"], self.option.pk)
+        self.assertEqual(self.counters(), (1, 1))
+        vote = Vote.objects.get()
+        self.assertIsNone(vote.user)
+        self.assertEqual(len(vote.voter_key), 64)
+
+    def test_same_session_second_vote_409_and_counters_unchanged(self):
+        self.vote(**JSON)
+        other = self.poll.options.last()
+        response = self.vote(other.pk, **JSON)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["message"], "Bu ankete zaten oy verdin.")
+        self.assertTrue(response.json()["results"]["results_visible"])
+        self.assertEqual(self.counters(), (1, 1))
+
+    def test_same_user_second_vote_409(self):
+        self.client.force_login(self.voter)
+        self.vote(**JSON)
+        second = self.client_class()
+        second.force_login(self.voter)
+        response = second.post(self.vote_url(), {"option_id": self.option.pk}, **JSON)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(Vote.objects.count(), 1)
+
+    def test_anonymous_vote_then_login_still_counts_as_voted(self):
+        self.vote(**JSON)
+        self.client.post(reverse("accounts:login"), {"username": "secmen", "password": PASSWORD})
+        response = self.vote(**JSON)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(Vote.objects.count(), 1)
+
+    def test_option_from_another_poll_400(self):
+        response = self.vote(self.other_poll.options.first().pk, **JSON)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Vote.objects.count(), 0)
+
+    def test_garbage_option_id_400(self):
+        self.assertEqual(self.vote("abc", **JSON).status_code, 400)
+
+    def test_closed_poll_vote_403(self):
+        Poll.objects.filter(pk=self.poll.pk).update(status=Poll.Status.CLOSED)
+        response = self.vote(**JSON)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Vote.objects.count(), 0)
+
+    def test_expired_poll_vote_403(self):
+        Poll.objects.filter(pk=self.poll.pk).update(closes_at=timezone.now() - timedelta(minutes=1))
+        self.assertEqual(self.vote(**JSON).status_code, 403)
+
+    def test_author_may_vote_on_own_poll(self):
+        self.client.force_login(self.author)
+        self.assertEqual(self.vote(**JSON).status_code, 200)
+
+    def test_concurrent_double_vote_caught_by_constraint(self):
+        self.client.force_login(self.voter)
+        self.vote(**JSON)
+        # Simulate a second tab that passed the pre-check at the same moment.
+        with mock.patch.object(services, "has_voted", return_value=False):
+            second = self.client_class()
+            second.force_login(self.voter)
+            response = second.post(self.vote_url(), {"option_id": self.option.pk}, **JSON)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(self.counters(), (1, 1))
+
+    def test_vote_without_js_redirects_to_detail(self):
+        response = self.vote(follow=True)
+        self.assertRedirects(response, self.poll.get_absolute_url())
+        self.assertContains(response, "Oyun kaydedildi.")
+        card = response.context["card"]
+        self.assertTrue(card.show_results)
+        self.assertFalse(card.can_vote)
+        self.assertContains(response, "option-row--voted")
+
+    def test_vote_requires_post(self):
+        self.assertEqual(self.client.get(self.vote_url()).status_code, 405)
+
+    def test_voted_poll_remembered_in_session(self):
+        self.vote(**JSON)
+        self.assertIn(self.poll.pk, self.client.session["voted_polls"])
+
+    def test_closed_poll_detail_has_no_vote_buttons(self):
+        Poll.objects.filter(pk=self.poll.pk).update(status=Poll.Status.CLOSED)
+        response = self.client.get(self.poll.get_absolute_url())
+        self.assertNotContains(response, 'name="option_id"')
+        self.assertContains(response, "Bu anket kapandı, artık oy verilemez.")
+
+
+class ResultsEndpointTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create_user("gizli_yazar", "yazar.gizli@example.com", PASSWORD)
+        cls.poll = make_poll(cls.author, options=("A", "B", "C"))
+
+    def results(self):
+        return self.client.get(reverse("polls:results", args=[self.poll.public_id]))
+
+    def test_percentages_hidden_before_voting(self):
+        data = self.results().json()
+        self.assertFalse(data["results_visible"])
+        self.assertTrue(all(o["percent"] is None and o["count"] is None for o in data["options"]))
+
+    def test_percentages_sum_to_100_with_uneven_counts(self):
+        for counts in ([1, 1, 1], [3, 2, 2], [1, 2, 4]):
+            with self.subTest(counts=counts):
+                Vote.objects.all().delete()
+                for option, count in zip(self.poll.options.all(), counts):
+                    Option.objects.filter(pk=option.pk).update(vote_count=count)
+                Poll.objects.filter(pk=self.poll.pk).update(total_votes=sum(counts), status=Poll.Status.CLOSED)
+                data = self.results().json()
+                self.assertEqual(sum(o["percent"] for o in data["options"]), 100)
+
+    def test_results_json_leaks_no_email_or_user_id(self):
+        voter = User.objects.create_user("secmen", "secmen.gizli@example.com", PASSWORD)
+        self.client.force_login(voter)
+        self.client.post(reverse("polls:vote", args=[self.poll.public_id]),
+                         {"option_id": self.poll.options.first().pk}, **JSON)
+        raw = self.results().content.decode()
+        data = json.loads(raw)
+        self.assertNotIn("@example.com", raw)
+        self.assertNotIn("gizli", raw)
+        self.assertNotIn("user", json.dumps(list(data.keys())))
+        self.assertNotIn("author", raw)
+        for key in ("user_id", "author_id"):
+            self.assertNotIn(key, raw)
+
+
+class OwnerActionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create_user("yazar", "yazar@example.com", PASSWORD)
+        cls.stranger = User.objects.create_user("yabanci", "yabanci@example.com", PASSWORD)
+
+    def setUp(self):
+        self.poll = make_poll(self.author)
+
+    def test_owner_can_close(self):
+        self.client.force_login(self.author)
+        self.client.post(reverse("polls:close", args=[self.poll.public_id]))
+        self.poll.refresh_from_db()
+        self.assertEqual(self.poll.status, Poll.Status.CLOSED)
+
+    def test_stranger_cannot_close_or_delete(self):
+        self.client.force_login(self.stranger)
+        self.assertEqual(self.client.post(reverse("polls:close", args=[self.poll.public_id])).status_code, 403)
+        self.assertEqual(self.client.post(reverse("polls:delete", args=[self.poll.public_id])).status_code, 403)
+        self.poll.refresh_from_db()
+        self.assertEqual(self.poll.status, Poll.Status.ACTIVE)
+
+    def test_anonymous_close_redirects_to_login(self):
+        response = self.client.post(reverse("polls:close", args=[self.poll.public_id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/giris/"))
+
+    def test_delete_shows_confirmation_then_deletes(self):
+        self.client.force_login(self.author)
+        url = reverse("polls:delete", args=[self.poll.public_id])
+        response = self.client.get(url)
+        self.assertContains(response, "Evet, anketi sil")
+        self.assertTrue(Poll.objects.filter(pk=self.poll.pk).exists())
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse("polls:profile", args=["yazar"]))
+        self.assertFalse(Poll.objects.filter(pk=self.poll.pk).exists())
+
+    def test_close_requires_post(self):
+        self.client.force_login(self.author)
+        self.assertEqual(self.client.get(reverse("polls:close", args=[self.poll.public_id])).status_code, 405)

@@ -42,6 +42,7 @@ class PollView:
     relative_time: str
     voted_option_id: int | None
     is_owner: bool
+    can_vote: bool
 
 
 def _open_q(now):
@@ -140,7 +141,30 @@ def build_poll_view(poll, request, voted_option_id=None):
         relative_time=relative_time(poll.created_at),
         voted_option_id=voted_option_id,
         is_owner=is_owner,
+        can_vote=poll.is_open and voted_option_id is None,
     )
+
+
+def results_payload(view):
+    """JSON for the results endpoint. Counts stay hidden until the visitor may see results."""
+    visible = view.show_results
+    return {
+        "total": view.poll.total_votes,
+        "results_visible": visible,
+        "options": [
+            {
+                "id": option.id,
+                "text": option.text,
+                "position": option.position,
+                "count": option.count if visible else None,
+                "percent": option.percent if visible else None,
+            }
+            for option in view.options
+        ],
+        "voted_option_id": view.voted_option_id,
+        "is_open": view.poll.is_open,
+        "badge": {"kind": view.badge_kind, "text": view.badge_text},
+    }
 
 
 def build_poll_views(polls, request):
