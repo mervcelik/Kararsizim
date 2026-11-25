@@ -1,5 +1,8 @@
 # Deploy — Vercel + Supabase
 
+Canlı adres: **https://kararsizim-tawny-tau.vercel.app** (fonksiyon bölgesi `fra1`).
+`DJANGO_CSRF_TRUSTED_ORIGINS` bu adresle, sonda `/` olmadan aynı olmalı.
+
 Uygulama Vercel'de tek bir Python fonksiyonu olarak çalışır (Django sıfır konfigürasyon),
 veritabanı Supabase Postgres'tir. Vercel `manage.py`'yi bulur, `WSGI_APPLICATION`'dan giriş
 noktasını çıkarır ve `STATIC_ROOT` tanımlı olduğu için build sırasında `collectstatic`'i
