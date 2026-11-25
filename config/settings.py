@@ -30,7 +30,12 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
-VOTER_KEY_SALT = os.getenv("VOTER_KEY_SALT", "dev-only-salt")
+VOTER_KEY_SALT = os.getenv("VOTER_KEY_SALT", "")
+if not VOTER_KEY_SALT:
+    if DEBUG:
+        VOTER_KEY_SALT = "dev-only-salt"
+    else:
+        raise RuntimeError("VOTER_KEY_SALT must be set when DEBUG is off.")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -111,6 +116,15 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Hashed file names let the CDN cache CSS/JS forever and still pick up changes.
+# The manifest only exists after collectstatic (run by Vercel at build), so tests
+# and DEBUG keep the plain storage.
+if not DEBUG and not RUNNING_TESTS:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"},
+    }
+
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -120,3 +134,5 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    # *.vercel.app is already on the HSTS preload list; this only matters for a custom domain.
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "31536000"))
