@@ -45,18 +45,21 @@ class UserLoginView(LoginView):
         return ((limits.LOGIN_IP, ()), (limits.LOGIN_USER, (username,)))
 
     def post(self, request, *args, **kwargs):
-        # Checked before authenticating, so a blocked attacker gets no password signal at all.
-        for rule, parts in self._rules():
-            if limits.is_limited(request, rule, *parts):
-                form = self.get_form_class()(request, initial={"username": request.POST.get("username", "")})
-                context = self.get_context_data(form=form, throttle_message=rule.message)
-                return self.render_to_response(context, status=429)
+        # Count first, then decide: the atomic increment means parallel requests cannot all
+        # slip past a check before any of them is recorded. Blocked requests are rejected
+        # before authenticating, so they give no signal about the password.
+        over = [rule for rule, parts in self._rules() if limits.hit(request, rule, *parts) > rule.limit]
+        if over:
+            form = self.get_form_class()(request, initial={"username": request.POST.get("username", "")})
+            context = self.get_context_data(form=form, throttle_message=over[0].message)
+            return self.render_to_response(context, status=429)
         return super().post(request, *args, **kwargs)
 
-    def form_invalid(self, form):
+    def form_valid(self, form):
+        # Only failed attempts should count; give this one back.
         for rule, parts in self._rules():
-            limits.hit(self.request, rule, *parts)
-        return super().form_invalid(form)
+            limits.undo(self.request, rule, *parts)
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

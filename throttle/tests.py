@@ -116,6 +116,27 @@ class LoginLimitTests(TestCase):
             client.post("/cikis/")
         self.assertFalse(Hit.objects.filter(count__gt=0).exists())
 
+    def test_username_limit_is_shared_across_networks(self):
+        statuses = []
+        for ip_n in range(3):
+            client = vercel_client(f"198.51.100.{20 + ip_n}")
+            for i in range(5):
+                statuses.append(client.post("/giris/", {"username": "ayse_k", "password": f"x{ip_n}{i}"}).status_code)
+        self.assertEqual(statuses.count(200), limits.LOGIN_USER.limit)
+        self.assertEqual(statuses[limits.LOGIN_USER.limit:], [429] * (15 - limits.LOGIN_USER.limit))
+
+    def test_attempt_is_counted_before_authenticating(self):
+        # Parallel requests must not all pass a check before any of them is recorded.
+        seen = []
+
+        def fake_authenticate(request=None, **credentials):
+            seen.append(limits.count(request, limits.LOGIN_USER, "ayse_k"))
+            return None
+
+        with mock.patch("django.contrib.auth.forms.authenticate", side_effect=fake_authenticate):
+            vercel_client("198.51.100.30").post("/giris/", {"username": "ayse_k", "password": "yanlis"})
+        self.assertEqual(seen, [1])
+
     def test_other_account_from_other_network_still_works(self):
         attacker = vercel_client("198.51.100.5")
         for i in range(limits.LOGIN_USER.limit):
