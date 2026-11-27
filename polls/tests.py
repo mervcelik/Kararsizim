@@ -1,4 +1,5 @@
 import json
+from io import StringIO
 from datetime import timedelta
 from unittest import mock
 
@@ -484,3 +485,23 @@ class UiShellTests(TestCase):
             if hex_color.search(text):
                 offenders.append(str(path))
         self.assertEqual(offenders, [])
+
+class SeedDemoTests(TestCase):
+    def test_demo_users_cannot_log_in(self):
+        from django.core.management import call_command
+
+        call_command("seed_demo", stdout=StringIO())
+        demo = User.objects.filter(email__endswith="@demo.kararsizim.test")
+        self.assertEqual(demo.count(), 3)
+        self.assertFalse(any(user.has_usable_password() for user in demo))
+
+    def test_real_account_with_demo_name_is_left_alone(self):
+        from django.core.management import CommandError, call_command
+
+        real = User.objects.create_user("mert42", "gercek@example.com", PASSWORD)
+        make_poll(real, question="Gerçek kullanıcının anketi?")
+        with self.assertRaises(CommandError):
+            call_command("seed_demo", stdout=StringIO())
+        real.refresh_from_db()
+        self.assertTrue(real.check_password(PASSWORD))
+        self.assertEqual(real.polls.count(), 1)

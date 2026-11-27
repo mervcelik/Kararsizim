@@ -4,13 +4,15 @@ import secrets
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
 from polls.models import Option, Poll, Vote
 
-DEMO_PASSWORD = "kararsiz-demo-2026"
+# Demo accounts never log in: a password in this public repo would let anyone take them over
+# on the live site and delete their polls. They get an unusable password instead.
+DEMO_EMAIL_DOMAIN = "@demo.kararsizim.test"
 
 DEMO_USERS = [
     ("ayse_k", "ayse@demo.kararsizim.test"),
@@ -50,10 +52,13 @@ class Command(BaseCommand):
 
         users = []
         for username, email in DEMO_USERS:
-            user, created = User.objects.get_or_create(username=username, defaults={"email": email})
-            if created:
-                user.set_password(DEMO_PASSWORD)
-                user.save()
+            user, _ = User.objects.get_or_create(username=username, defaults={"email": email})
+            if not user.email.endswith(DEMO_EMAIL_DOMAIN):
+                # A real person registered this name first; never touch their account or polls.
+                raise CommandError(f"@{username} gerçek bir hesap, demo verisi oluşturulmadı.")
+            if user.has_usable_password():
+                user.set_unusable_password()
+                user.save(update_fields=["password"])
             users.append(user)
 
         deleted, _ = Poll.objects.filter(author__in=users).delete()
