@@ -12,6 +12,7 @@
 
     <form method="post" novalidate class="form">
       {% csrf_token %}
+      {% if throttle_message %}<p class="notice notice--error" role="alert">{{ throttle_message }}</p>{% endif %}
       {% for error in form.non_field_errors %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endfor %}
       {% for field in form %}
         {% include "partials/form_field.html" %}

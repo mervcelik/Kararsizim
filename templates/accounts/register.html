@@ -9,9 +9,14 @@
 
     <form method="post" novalidate class="form">
       {% csrf_token %}
-      {% for error in form.non_field_errors %}<p class="notice notice--error">{{ error }}</p>{% endfor %}
+      {% if throttle_message %}<p class="notice notice--error" role="alert">{{ throttle_message }}</p>{% endif %}
+      {% for error in form.non_field_errors %}<p class="notice notice--error" role="alert">{{ error }}</p>{% endfor %}
       {% for field in form %}
-        {% include "partials/form_field.html" %}
+        {% if field.name == form.honeypot_name %}
+          <div class="visually-hidden" aria-hidden="true">{{ field.label_tag }}{{ field }}</div>
+        {% else %}
+          {% include "partials/form_field.html" %}
+        {% endif %}
       {% endfor %}
       <button type="submit" class="btn btn--primary btn--block">Kayıt ol</button>
     </form>

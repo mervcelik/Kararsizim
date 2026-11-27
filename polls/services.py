@@ -8,6 +8,11 @@ class VoteError(Exception):
     status = 400
     message = "Oy kaydedilemedi."
 
+    def __init__(self, message=None):
+        super().__init__(message or self.message)
+        if message:
+            self.message = message
+
 
 class PollClosed(VoteError):
     status = 403
@@ -22,6 +27,11 @@ class InvalidOption(VoteError):
 class AlreadyVoted(VoteError):
     status = 409
     message = "Bu ankete zaten oy verdin."
+
+
+class RateLimited(VoteError):
+    status = 429
+    message = "Çok hızlı oy veriyorsun. Biraz sonra tekrar dene."
 
 
 @transaction.atomic

@@ -13,6 +13,14 @@ class RegisterForm(UserCreationForm):
         help_text="Kimseye gösterilmez.",
     )
 
+    # Honeypot: hidden from people and screen readers, filled in by naive bots.
+    website = forms.CharField(
+        label="Web sitesi (boş bırak)",
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}),
+    )
+    honeypot_name = "website"
+
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ("username", "email")
@@ -38,6 +46,12 @@ class RegisterForm(UserCreationForm):
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("Bu e-posta ile zaten bir hesap var.", code="duplicate_email")
         return email
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get(self.honeypot_name):
+            raise forms.ValidationError("Kayıt tamamlanamadı. Sayfayı yenileyip tekrar dene.", code="honeypot")
+        return cleaned
 
 
 class LoginForm(AuthenticationForm):

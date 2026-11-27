@@ -46,7 +46,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "polls",
+    "throttle",
 ]
+
+# Database-backed rate limits (throttle app). Only turn off for local debugging.
+RATE_LIMITS_ENABLED = env_bool("RATE_LIMITS_ENABLED", True)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

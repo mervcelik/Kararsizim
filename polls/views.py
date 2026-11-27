@@ -4,6 +4,8 @@ from django.http import Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from throttle import limits
+
 from . import selectors, services
 from .forms import PollForm
 from .models import MAX_OPTIONS, MIN_OPTIONS
@@ -46,11 +48,21 @@ def detail(request, public_id):
     return render(request, "polls/detail.html", {"card": _poll_view(request, poll), "poll": poll})
 
 
+def _check_anonymous_vote_limits(request, poll):
+    # A fresh cookie is a fresh anonymous voter, so the network is the only brake on
+    # ballot stuffing. Logged-in users are already limited by the per-user constraint.
+    for rule, parts in ((limits.VOTE_PER_POLL, (poll.pk,)), (limits.VOTE_GLOBAL, ())):
+        if limits.hit(request, rule, *parts) > rule.limit:
+            raise services.RateLimited(rule.message)
+
+
 @require_POST
 def vote(request, public_id):
     poll = _get_poll_or_404(public_id)
     user = request.user if request.user.is_authenticated else None
     try:
+        if user is None:
+            _check_anonymous_vote_limits(request, poll)
         services.cast_vote(
             poll=poll,
             option_id=request.POST.get("option_id"),
@@ -64,7 +76,8 @@ def vote(request, public_id):
         status, message, ok = 200, "Oyun kaydedildi.", True
 
     if _wants_json(request):
-        fresh = selectors.get_poll(public_id)
+        # The owner may delete the poll mid-request; fall back to the copy we already have.
+        fresh = selectors.get_poll(public_id) or poll
         return JsonResponse(
             {"ok": ok, "message": message, "results": selectors.results_payload(_poll_view(request, fresh))},
             status=status,
