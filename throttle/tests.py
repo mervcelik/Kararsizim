@@ -33,6 +33,25 @@ class LimitsUnitTests(TestCase):
         request = RequestFactory().get("/", REMOTE_ADDR="10.0.0.1", HTTP_X_VERCEL_FORWARDED_FOR="198.51.100.9, 10.0.0.1")
         self.assertEqual(limits.client_ip(request), "198.51.100.9")
 
+    def test_ipv6_is_grouped_by_64_and_mapped_ipv4_is_ipv4(self):
+        rf = RequestFactory()
+        a = rf.get("/", HTTP_X_VERCEL_FORWARDED_FOR="2001:db8:1:2:aaaa::1")
+        b = rf.get("/", HTTP_X_VERCEL_FORWARDED_FOR="2001:db8:1:2:ffff::9")
+        other = rf.get("/", HTTP_X_VERCEL_FORWARDED_FOR="2001:db8:1:3::1")
+        mapped = rf.get("/", HTTP_X_VERCEL_FORWARDED_FOR="::ffff:203.0.113.7")
+        self.assertEqual(limits.client_network(a), limits.client_network(b))
+        self.assertEqual(limits.client_network(a), ("2001:db8:1:2::/64", True))
+        self.assertNotEqual(limits.client_network(a), limits.client_network(other))
+        self.assertEqual(limits.client_network(mapped), ("203.0.113.7", False))
+        self.assertEqual(limits.limit_for(a, limits.VOTE_PER_POLL), limits.VOTE_PER_POLL.limit_v6)
+        self.assertEqual(limits.limit_for(mapped, limits.VOTE_PER_POLL), limits.VOTE_PER_POLL.limit)
+        self.assertEqual(limits.limit_for(a, limits.LOGIN_USER), limits.LOGIN_USER.limit)
+
+    def test_garbage_ip_does_not_crash(self):
+        request = RequestFactory().get("/", HTTP_X_VERCEL_FORWARDED_FOR="bilinmiyor")
+        self.assertEqual(limits.client_network(request), ("bilinmiyor", False))
+        self.assertEqual(limits.hit(request, limits.LOGIN_IP), 1)
+
     def test_window_resets(self):
         rule = limits.Rule("t", 2, 60, "")
         with mock.patch("throttle.limits.time.time", return_value=1_000_020):
@@ -80,6 +99,17 @@ class AnonymousVoteLimitTests(TestCase):
         self.assertEqual(blocked.status_code, 429)
         self.assertIn("çok fazla oy", blocked.json()["message"])
         self.assertEqual(self.vote(vercel_client("198.51.100.2")).status_code, 200)
+
+    def test_shared_ipv4_lets_a_classroom_vote(self):
+        # 30 students behind one school/CGNAT address, each with their own browser.
+        statuses = [self.vote(vercel_client("203.0.113.50")).status_code for _ in range(30)]
+        self.assertEqual(statuses, [200] * 30)
+
+    def test_ipv6_rotation_inside_one_64_is_capped(self):
+        limit = limits.VOTE_PER_POLL.limit_v6
+        statuses = [self.vote(vercel_client(f"2001:db8:5:6::{n + 1:x}")).status_code for n in range(limit + 2)]
+        self.assertEqual(statuses.count(200), limit)
+        self.assertEqual(statuses[-1], 429)
 
     def test_logged_in_users_are_not_counted(self):
         for index in range(limits.VOTE_PER_POLL.limit + 1):

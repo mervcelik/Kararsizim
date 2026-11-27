@@ -16,7 +16,7 @@ def register(request):
     if request.user.is_authenticated:
         return redirect("polls:index")
 
-    if request.method == "POST" and limits.hit(request, limits.REGISTER_IP) > limits.REGISTER_IP.limit:
+    if request.method == "POST" and limits.over_limit(request, limits.REGISTER_IP):
         form = RegisterForm(initial={"username": request.POST.get("username", "")})
         return render(
             request,
@@ -48,7 +48,7 @@ class UserLoginView(LoginView):
         # Count first, then decide: the atomic increment means parallel requests cannot all
         # slip past a check before any of them is recorded. Blocked requests are rejected
         # before authenticating, so they give no signal about the password.
-        over = [rule for rule, parts in self._rules() if limits.hit(request, rule, *parts) > rule.limit]
+        over = [rule for rule, parts in self._rules() if limits.over_limit(request, rule, *parts)]
         if over:
             form = self.get_form_class()(request, initial={"username": request.POST.get("username", "")})
             context = self.get_context_data(form=form, throttle_message=over[0].message)

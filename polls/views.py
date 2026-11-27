@@ -52,7 +52,7 @@ def _check_anonymous_vote_limits(request, poll):
     # A fresh cookie is a fresh anonymous voter, so the network is the only brake on
     # ballot stuffing. Logged-in users are already limited by the per-user constraint.
     for rule, parts in ((limits.VOTE_PER_POLL, (poll.pk,)), (limits.VOTE_GLOBAL, ())):
-        if limits.hit(request, rule, *parts) > rule.limit:
+        if limits.over_limit(request, rule, *parts):
             raise services.RateLimited(rule.message)
 
 

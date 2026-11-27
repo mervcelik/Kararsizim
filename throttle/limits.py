@@ -4,6 +4,7 @@ Vercel may serve every request from a different instance, so an in-memory counte
 not be shared. Keys are HMACs of (scope, IP, extra parts); raw IPs are never stored.
 """
 
+import ipaddress
 import random
 import time
 from dataclasses import dataclass
@@ -22,21 +23,26 @@ CLEANUP_AGE_SECONDS = 24 * 3600
 @dataclass(frozen=True)
 class Rule:
     scope: str
-    limit: int
+    limit: int  # IPv4: one address is often shared (mobile CGNAT, school Wi-Fi), so keep it loose
     period: int  # seconds
     message: str
     per_ip: bool = True  # False: one shared counter for the parts, whatever the network
+    limit_v6: int | None = None  # IPv6 /64: usually one home or device, so it can be tighter
 
 
-VOTE_PER_POLL = Rule("vote-poll", 10, 3600, "Bu ağdan bu ankete çok fazla oy geldi. Biraz sonra tekrar dene.")
-VOTE_GLOBAL = Rule("vote", 100, 3600, "Çok hızlı oy veriyorsun. Biraz sonra tekrar dene.")
-LOGIN_IP = Rule("login-ip", 30, 900, "Çok fazla hatalı giriş denemesi. 15 dakika sonra tekrar dene.")
+VOTE_PER_POLL = Rule(
+    "vote-poll", 50, 3600, "Bu ağdan bu ankete çok fazla oy geldi. Biraz sonra tekrar dene.", limit_v6=10
+)
+VOTE_GLOBAL = Rule("vote", 300, 3600, "Çok hızlı oy veriyorsun. Biraz sonra tekrar dene.", limit_v6=100)
+LOGIN_IP = Rule("login-ip", 100, 900, "Çok fazla hatalı giriş denemesi. 15 dakika sonra tekrar dene.", limit_v6=30)
 # Not per IP: otherwise a botnet gets 10 guesses per address against the same account.
 # The cost is that anyone can lock an account's logins for 15 minutes.
 LOGIN_USER = Rule(
     "login-user", 10, 900, "Bu hesap için çok fazla hatalı deneme yapıldı. 15 dakika sonra tekrar dene.", per_ip=False
 )
-REGISTER_IP = Rule("register", 10, 3600, "Bu ağdan çok fazla kayıt denemesi yapıldı. Bir saat sonra tekrar dene.")
+REGISTER_IP = Rule(
+    "register", 30, 3600, "Bu ağdan çok fazla kayıt denemesi yapıldı. Bir saat sonra tekrar dene.", limit_v6=10
+)
 
 
 def client_ip(request):
@@ -46,8 +52,29 @@ def client_ip(request):
     return forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
 
 
+def client_network(request):
+    """(network id, is_ipv6). IPv6 is grouped by /64, since one subscriber can rotate freely inside it."""
+    raw = client_ip(request)
+    try:
+        address = ipaddress.ip_address(raw)
+    except ValueError:
+        return raw, False
+    if address.version == 6 and address.ipv4_mapped:
+        return str(address.ipv4_mapped), False
+    if address.version == 6:
+        return str(ipaddress.ip_network(f"{address}/64", strict=False)), True
+    return str(address), False
+
+
+def limit_for(request, rule):
+    if not rule.per_ip:
+        return rule.limit
+    _, is_v6 = client_network(request)
+    return rule.limit_v6 if is_v6 and rule.limit_v6 is not None else rule.limit
+
+
 def _key(request, rule, parts):
-    network = client_ip(request) if rule.per_ip else "*"
+    network = client_network(request)[0] if rule.per_ip else "*"
     value = "|".join([rule.scope, network, *(str(part).lower() for part in parts)])
     return salted_hmac("throttle", value, algorithm="sha256").hexdigest()
 
@@ -70,7 +97,15 @@ def count(request, rule, *parts):
 
 
 def is_limited(request, rule, *parts):
-    return _enabled() and count(request, rule, *parts) >= rule.limit
+    return _enabled() and count(request, rule, *parts) >= limit_for(request, rule)
+
+
+def over_limit(request, rule, *parts):
+    """Counts this attempt first, then reports whether it went over the limit.
+
+    Counting before deciding keeps parallel requests from all slipping past the check.
+    """
+    return _enabled() and hit(request, rule, *parts) > limit_for(request, rule)
 
 
 def hit(request, rule, *parts):
